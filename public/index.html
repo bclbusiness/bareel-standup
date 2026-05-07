@@ -302,7 +302,7 @@
     /* ── SCREEN 3: JOIN ── */
     #screen-join {
       min-height: calc(100vh - 56px);
-      display: flex; flex-direction: column;
+      flex-direction: column;
     }
     #screen-join.active { display: flex; }
     .join-body {
@@ -865,8 +865,8 @@
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 // REPLACE THESE TWO VALUES WITH YOUR SUPABASE PROJECT URL AND ANON KEY
-const SUPABASE_URL = 'https://usrvxlmmepkuhneubxbm.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzcnZ4bG1tZXBrdWhuZXVieGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNjIwMjgsImV4cCI6MjA5MzYzODAyOH0.x6bzlk_PIIq9jYsjmmuKblMlC2iK-scjAlHLZwv0tRE';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ───────────────────────────────────────────────────────────────────────────
 
 const { createClient } = supabase;
@@ -898,6 +898,8 @@ let state = {
   isPaused: false,
   timerInterval: null,
   subscription: null,
+  pollInterval: null,
+  lastSpeakerIndex: -1,
 };
 
 // ── SCREEN ROUTER ──────────────────────────────────────────────────────────
@@ -1320,6 +1322,7 @@ function showCompleteScreen(room) {
 
 function runAnother() {
   clearInterval(state.timerInterval);
+  if (state.pollInterval) clearInterval(state.pollInterval);
   if (state.subscription) state.subscription.unsubscribe();
   state = { role: null, roomId: null, roomCode: null, participantName: null,
     participants: [], questions: [], totalSeconds: 0, perPersonSeconds: 0,
@@ -1342,32 +1345,47 @@ function subscribeToRoom(roomId) {
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}`
     }, payload => {
-      const room = payload.new;
-
-      if (room.status === 'waiting') {
-        if (state.role === 'admin') updateWaitingParticipants(room.participants || []);
-      }
-
-      if (room.status === 'active') {
-        state.currentIndex     = room.current_index;
-        state.isPaused         = room.is_paused;
-        state.perPersonSeconds = room.per_person_seconds;
-        state.speakerOrder     = room.speaker_order;
-        state.participants     = room.participants;
-
-        if (document.getElementById('screen-active').classList.contains('active')) {
-          updateActiveSpeaker(room);
-          startLocalTimer(room);
-        } else {
-          renderActiveScreen(room);
-        }
-      }
-
-      if (room.status === 'complete') {
-        showCompleteScreen(room);
-      }
+      handleRoomUpdate(payload.new);
     })
     .subscribe();
+
+  // Poll every 2 seconds as fallback in case realtime isn't firing
+  if (state.pollInterval) clearInterval(state.pollInterval);
+  state.pollInterval = setInterval(async () => {
+    if (!state.roomId) return;
+    const { data: room } = await db.from('rooms').select('*').eq('id', roomId).single();
+    if (room) handleRoomUpdate(room);
+  }, 2000);
+}
+
+function handleRoomUpdate(room) {
+  if (room.status === 'waiting') {
+    if (state.role === 'admin') updateWaitingParticipants(room.participants || []);
+  }
+
+  if (room.status === 'active') {
+    state.currentIndex     = room.current_index;
+    state.isPaused         = room.is_paused;
+    state.perPersonSeconds = room.per_person_seconds;
+    state.speakerOrder     = room.speaker_order;
+    state.participants     = room.participants;
+
+    if (document.getElementById('screen-active').classList.contains('active')) {
+      updateActiveSpeaker(room);
+      if (state.lastSpeakerIndex !== room.current_index) {
+        state.lastSpeakerIndex = room.current_index;
+        startLocalTimer(room);
+      }
+    } else {
+      state.lastSpeakerIndex = room.current_index;
+      renderActiveScreen(room);
+    }
+  }
+
+  if (room.status === 'complete') {
+    if (state.pollInterval) clearInterval(state.pollInterval);
+    showCompleteScreen(room);
+  }
 }
 
 // ── UTILITIES ──────────────────────────────────────────────────────────────
