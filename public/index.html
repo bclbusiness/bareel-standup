@@ -669,11 +669,17 @@
         <div class="radio-group">
           <div class="radio-option selected" id="radio-total" onclick="setTimingMode('total')">
             <div class="radio-dot"></div>
-            <span class="radio-label">Set total standup time</span>
+            <div>
+              <span class="radio-label">Set total standup time</span>
+              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Total time is divided amongst number of participants.</div>
+            </div>
           </div>
           <div class="radio-option" id="radio-per-person" onclick="setTimingMode('per-person')">
             <div class="radio-dot"></div>
-            <span class="radio-label">Set time per participant</span>
+            <div>
+              <span class="radio-label">Set time per participant</span>
+              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Each participant is given the specified amount of time.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -771,13 +777,13 @@
 
       <div class="field">
         <label>Host participation</label>
-        <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer" onclick="document.getElementById('host-participating').click()">
+        <label for="host-participating" style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer">
           <input type="checkbox" id="host-participating" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer;flex-shrink:0" />
           <div>
             <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">I am participating in this standup</div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">You'll be added to the speaker queue along with everyone else</div>
           </div>
-        </div>
+        </label>
       </div>
 
       <div class="field hidden" id="host-name-field">
