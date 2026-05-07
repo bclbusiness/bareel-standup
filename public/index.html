@@ -853,7 +853,7 @@
 
       <div class="complete-participants" id="complete-participants"></div>
 
-      <button class="btn btn-outline" onclick="runAnother()">Run another standup</button>
+      <button class="btn btn-outline" id="btn-run-another" onclick="runAnother()">Run another standup</button>
     </div>
   </div>
 </div>
@@ -1316,6 +1316,9 @@ function showCompleteScreen(room) {
       <span class="pill-avatar">${initials(p)}</span>${p}
     </div>
   `).join('');
+
+  const runAnotherBtn = document.getElementById('btn-run-another');
+  if (runAnotherBtn) runAnotherBtn.style.display = state.role === 'admin' ? 'inline-flex' : 'none';
 
   showScreen('screen-complete');
 }
