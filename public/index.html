@@ -780,9 +780,9 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field hidden" id="host-name-field">
         <label>Host name</label>
-        <input type="text" id="host-name" placeholder="Your name" class="hidden" />
+        <input type="text" id="host-name" placeholder="Your name" />
       </div>
 
       <div class="field">
@@ -1086,6 +1086,7 @@ let state = {
   pausedDuration: 0,
   decisionInterval: null,
   decisionActive: false,
+  clockOffset: 0,
 };
 
 // ── SCREEN ROUTER ──────────────────────────────────────────────────────────
@@ -1129,9 +1130,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkbox = document.getElementById('host-participating');
   if (checkbox) {
     checkbox.addEventListener('change', () => {
-      const nameField = document.getElementById('host-name');
+      const nameField = document.getElementById('host-name-field');
       nameField.classList.toggle('hidden', !checkbox.checked);
-      if (checkbox.checked) nameField.focus();
+      if (checkbox.checked) document.getElementById('host-name').focus();
     });
   }
 });
@@ -1280,6 +1281,11 @@ function showWaitingRoom(roomData) {
 }
 
 function updateWaitingParticipants(participants) {
+  // only update DOM if participant list has actually changed — prevents flicker
+  const currentNames = state.participants.join(',');
+  const newNames = participants.join(',');
+  const changed = currentNames !== newNames;
+
   state.participants = participants;
   const list  = document.getElementById('waiting-participants-list');
   const count = document.getElementById('waiting-count');
@@ -1290,7 +1296,7 @@ function updateWaitingParticipants(participants) {
   count.textContent = `${participants.length} joined`;
 
   if (participants.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text-tertiary);padding:8px 0">Waiting for participants...</p>';
+    if (changed) list.innerHTML = '<p style="font-size:13px;color:var(--text-tertiary);padding:8px 0">Waiting for participants...</p>';
     perEl.textContent = '— per person';
     btn.disabled = true;
     statusBtn.textContent = 'Waiting for participants...';
@@ -1307,13 +1313,16 @@ function updateWaitingParticipants(participants) {
   const perSecRem = perSec % 60;
   perEl.textContent = perSecRem > 0 ? `${perMin}m ${perSecRem}s each` : `${perMin}m each`;
 
-  list.innerHTML = participants.map(p => `
-    <div class="participant-item">
-      <div class="avatar">${initials(p)}</div>
-      <span style="font-size:14px">${p}</span>
-      <div class="online-dot"></div>
-    </div>
-  `).join('');
+  // only rebuild the list HTML if something changed
+  if (changed) {
+    list.innerHTML = participants.map(p => `
+      <div class="participant-item">
+        <div class="avatar">${initials(p)}</div>
+        <span style="font-size:14px">${p}</span>
+        <div class="online-dot"></div>
+      </div>
+    `).join('');
+  }
 
   btn.disabled = false;
   statusBtn.textContent = `${participants.length} participant${participants.length !== 1 ? 's' : ''} ready`;
@@ -1540,7 +1549,9 @@ function startLocalTimer(room) {
   function tick() {
     if (state.isPaused) return;
     const pausedMs = (state.pausedDuration || 0) * 1000;
-    const elapsed = Date.now() - turnStarted - pausedMs;
+    // subtract clock offset to align with server time
+    const correctedNow = Date.now() - (state.clockOffset || 0);
+    const elapsed = correctedNow - turnStarted - pausedMs;
     const remaining = Math.max(0, totalMs - elapsed);
     state.timeLeft = Math.ceil(remaining / 1000);
 
@@ -1768,6 +1779,18 @@ function runAnother() {
 function subscribeToRoom(roomId) {
   if (state.subscription) state.subscription.unsubscribe();
 
+  // calculate clock offset between this device and server time
+  // we use the room's created_at as a reference point
+  db.from('rooms').select('created_at').eq('id', roomId).single().then(({ data }) => {
+    if (data?.created_at) {
+      const serverTime = new Date(data.created_at).getTime();
+      // fetch again to get a fresh timestamp we can use as "now"
+      db.rpc('get_server_time').then(({ data: t }) => {
+        if (t) state.clockOffset = Date.now() - new Date(t).getTime();
+      }).catch(() => { state.clockOffset = 0; });
+    }
+  });
+
   state.subscription = db
     .channel(`room-${roomId}`)
     .on('postgres_changes', {
@@ -1783,7 +1806,7 @@ function subscribeToRoom(roomId) {
     if (!state.roomId) return;
     const { data: room } = await db.from('rooms').select('*').eq('id', roomId).single();
     if (room) handleRoomUpdate(room);
-  }, 2000);
+  }, 500);
 }
 
 function handleRoomUpdate(room) {
@@ -1883,9 +1906,8 @@ function loadSavedSettings() {
     if (saved.hostParticipating) {
       const cb = document.getElementById('host-participating');
       cb.checked = true;
-      const nameField = document.getElementById('host-name');
-      nameField.classList.remove('hidden');
-      if (saved.hostName) nameField.value = saved.hostName;
+      document.getElementById('host-name-field').classList.remove('hidden');
+      if (saved.hostName) document.getElementById('host-name').value = saved.hostName;
     }
 
     // restore questions
