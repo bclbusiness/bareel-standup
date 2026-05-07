@@ -643,6 +643,7 @@
   <span class="brand-name">Bareel</span>
   <span class="brand-sub">Stand Up</span>
   <span class="badge hidden" id="topbar-badge">Admin</span>
+  <span id="topbar-code" class="hidden" style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--brand);background:var(--brand-light);border:1px solid #cccaf5;border-radius:6px;padding:3px 10px;letter-spacing:2px;"></span>
   <div class="progress-wrap hidden" id="topbar-progress">
     <div class="progress-bar" id="progress-bar" style="width:0%"></div>
   </div>
@@ -1072,6 +1073,7 @@ let state = {
   pausedAt: null,
   pausedDuration: 0,
   decisionInterval: null,
+  decisionActive: false,
 };
 
 // ── SCREEN ROUTER ──────────────────────────────────────────────────────────
@@ -1091,10 +1093,17 @@ function showScreen(id) {
     badge.textContent = 'Admin';
     badge.classList.remove('hidden');
   }
+  const topbarCode = document.getElementById('topbar-code');
+  topbarCode.classList.add('hidden');
+
   if (id === 'screen-active') {
     if (state.role === 'admin') {
       badge.textContent = 'Admin';
       badge.classList.remove('hidden');
+      if (state.roomCode) {
+        topbarCode.textContent = state.roomCode;
+        topbarCode.classList.remove('hidden');
+      }
     }
     progWrap.classList.remove('hidden');
     progLbl.classList.remove('hidden');
@@ -1223,6 +1232,9 @@ async function createRoom() {
 function showWaitingRoom(roomData) {
   document.getElementById('waiting-standup-name').textContent = roomData.name;
   document.getElementById('topbar-badge').textContent = 'Admin';
+  const topbarCode = document.getElementById('topbar-code');
+  topbarCode.textContent = state.roomCode;
+  topbarCode.classList.remove('hidden');
 
   renderCodeDigits(state.roomCode, 'waiting-code-digits');
 
@@ -1470,7 +1482,7 @@ function updateActiveSpeaker(room) {
     const newJoiners = room ? (room.new_joiners || []) : [];
     const njBanner = document.getElementById('new-joiners-banner');
     if (newJoiners.length > 0) {
-      njBanner.textContent = `⏳ ${newJoiners.length} new joiner${newJoiners.length !== 1 ? 's' : ''} waiting — they'll get a slot after the current round`;
+      njBanner.textContent = `⏳ ${newJoiners.length} new joiner${newJoiners.length !== 1 ? 's' : ''} waiting — you'll be able to choose whether to continue the stand up with them or not`;
       njBanner.classList.add('visible');
     } else {
       njBanner.classList.remove('visible');
@@ -1576,6 +1588,10 @@ async function togglePause() {
 
 // ── COMPLETE ───────────────────────────────────────────────────────────────
 function showDecisionScreen(room) {
+  // guard — only run once, ignore repeat calls from polling
+  if (state.decisionActive) return;
+  state.decisionActive = true;
+
   clearInterval(state.timerInterval);
   if (state.pollInterval) clearInterval(state.pollInterval);
 
@@ -1632,6 +1648,7 @@ function showDecisionScreen(room) {
 
 async function continueWithNewJoiners() {
   clearInterval(state.decisionInterval);
+  state.decisionActive = false;
   const { data: room } = await db.from('rooms').select('*').eq('id', state.roomId).single();
   const newJoiners = room?.new_joiners || [];
   if (newJoiners.length === 0) { endStandup(); return; }
@@ -1654,6 +1671,7 @@ async function continueWithNewJoiners() {
 
 async function endStandup() {
   clearInterval(state.decisionInterval);
+  state.decisionActive = false;
   await db.from('rooms').update({ status: 'complete' }).eq('id', state.roomId);
 }
 
@@ -1685,6 +1703,7 @@ function runAnother() {
   clearInterval(state.decisionInterval);
   if (state.pollInterval) clearInterval(state.pollInterval);
   if (state.subscription) state.subscription.unsubscribe();
+  state.decisionActive = false;
   state = { role: null, roomId: null, roomCode: null, participantName: null,
     participants: [], questions: [], totalSeconds: 0, perPersonSeconds: 0,
     speakerOrder: [], currentIndex: 0, timeLeft: 0, isPaused: false,
