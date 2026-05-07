@@ -519,6 +519,66 @@
     }
     .paused-banner.visible { display: block; }
 
+
+    /* ── SCREEN: DECISION ── */
+    #screen-decision {
+      min-height: calc(100vh - 56px);
+      flex-direction: column;
+    }
+    #screen-decision.active { display: flex; }
+    .decision-body {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px 20px;
+    }
+    .decision-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px 32px;
+      width: 100%; max-width: 440px;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+    .decision-countdown {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--brand-light);
+      border: 3px solid var(--brand-mid);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 26px; font-weight: 600; color: var(--brand-dark);
+      transition: border-color 0.3s;
+    }
+    .decision-countdown.urgent { border-color: var(--red); background: #fee8e8; color: var(--red); }
+    .decision-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+    .new-joiners-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--amber-light);
+      border: 1px solid #f5c18a;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px; font-weight: 500; color: var(--amber);
+      margin-bottom: 16px;
+    }
+    /* new joiners notification on active screen */
+    .new-joiners-banner {
+      background: var(--amber-light);
+      border: 1px solid #f5c18a;
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 12px; color: var(--amber);
+      margin-bottom: 12px;
+      display: none;
+    }
+    .new-joiners-banner.visible { display: block; }
+    /* awaiting host — participant view */
+    .awaiting-body {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px 20px;
+    }
+
     /* ── SCREEN 5: COMPLETE ── */
     .complete-body { text-align: center; padding: 48px 0 24px; }
     .complete-icon {
@@ -835,6 +895,7 @@
 ════════════════════════════════════════════ -->
 <div class="screen" id="screen-active">
   <div class="container-wide">
+    <div class="new-joiners-banner" id="new-joiners-banner"></div>
     <div class="paused-banner" id="paused-banner">⏸ Standup paused by admin</div>
 
     <div class="standup-grid">
@@ -893,6 +954,36 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     SCREEN: DECISION (continue or end)
+════════════════════════════════════════════ -->
+<div class="screen" id="screen-decision">
+  <!-- Admin view -->
+  <div class="decision-body" id="decision-admin-view">
+    <div class="decision-card">
+      <div class="decision-countdown" id="decision-countdown">10</div>
+      <div class="new-joiners-badge" id="decision-joiners-count">0 new joiners waiting</div>
+      <h1 style="margin-bottom:8px">Original standup complete</h1>
+      <p class="subtitle">New participants joined after the standup began. Would you like to continue?</p>
+      <div id="decision-time-info" style="font-size:13px;color:var(--text-secondary);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-top:12px;margin-bottom:4px;"></div>
+      <div class="decision-buttons">
+        <button class="btn btn-primary btn-full" onclick="continueWithNewJoiners()">Continue with new joiners</button>
+        <button class="btn btn-outline btn-full" onclick="endStandup()">End standup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Participant view -->
+  <div class="awaiting-body hidden" id="decision-participant-view">
+    <div class="decision-card">
+      <div class="decision-countdown" id="decision-countdown-participant">10</div>
+      <h1 style="margin-bottom:8px">Awaiting host input</h1>
+      <p class="subtitle">The host is deciding whether to continue with late joiners...</p>
     </div>
   </div>
 </div>
@@ -980,6 +1071,7 @@ let state = {
   fixedPerPersonSeconds: null,
   pausedAt: null,
   pausedDuration: 0,
+  decisionInterval: null,
 };
 
 // ── SCREEN ROUTER ──────────────────────────────────────────────────────────
@@ -1239,11 +1331,6 @@ async function joinRoom() {
     showError('join-error', 'This standup has already finished.'); return;
   }
 
-  const updatedParticipants = [...(room.participants || [])];
-  if (!updatedParticipants.includes(name)) updatedParticipants.push(name);
-
-  await db.from('rooms').update({ participants: updatedParticipants }).eq('id', room.id);
-
   state.role = 'participant';
   state.roomId = room.id;
   state.roomCode = code;
@@ -1253,18 +1340,33 @@ async function joinRoom() {
   state.timingMode = room.timing_mode || 'total';
   state.fixedPerPersonSeconds = room.per_person_seconds || null;
 
-  document.getElementById('join-confirmed-name').textContent = name;
-  document.getElementById('join-waiting-name-label').textContent = `Waiting for the admin to begin — ${room.name}`;
+  if (room.status === 'active' || room.status === 'deciding') {
+    // latecomer — add to new_joiners list
+    const updatedNewJoiners = [...(room.new_joiners || [])];
+    if (!updatedNewJoiners.includes(name)) updatedNewJoiners.push(name);
+    await db.from('rooms').update({ new_joiners: updatedNewJoiners }).eq('id', room.id);
 
-  document.getElementById('join-form-wrap').classList.add('hidden');
-  document.getElementById('join-waiting-wrap').classList.remove('hidden');
+    document.getElementById('join-confirmed-name').textContent = name;
+    document.getElementById('join-waiting-name-label').textContent = `The standup is underway — you've been added to the waiting list`;
+    document.getElementById('join-form-wrap').classList.add('hidden');
+    document.getElementById('join-waiting-wrap').classList.remove('hidden');
+  } else {
+    // normal join — add to participants
+    const updatedParticipants = [...(room.participants || [])];
+    if (!updatedParticipants.includes(name)) updatedParticipants.push(name);
+    await db.from('rooms').update({ participants: updatedParticipants }).eq('id', room.id);
+
+    document.getElementById('join-confirmed-name').textContent = name;
+    document.getElementById('join-waiting-name-label').textContent = `Waiting for the admin to begin — ${room.name}`;
+    document.getElementById('join-form-wrap').classList.add('hidden');
+    document.getElementById('join-waiting-wrap').classList.remove('hidden');
+  }
 
   btn.innerHTML = 'Join standup'; btn.disabled = false;
 
   subscribeToRoom(room.id);
 
-  // if standup already active, jump straight in
-  if (room.status === 'active') renderActiveScreen(room);
+  if (room.status === 'deciding') showDecisionScreen(room);
   if (room.status === 'complete') showScreen('screen-complete');
 }
 
@@ -1363,6 +1465,18 @@ function updateActiveSpeaker(room) {
   const lbl = document.getElementById('btn-next-lbl');
   if (lbl) lbl.textContent = state.role === 'admin' ? 'Visible to admin & current speaker' : isCurrentSpeaker ? "It's your turn — press when done" : '';
 
+  // new joiners banner — admin only
+  if (state.role === 'admin') {
+    const newJoiners = room ? (room.new_joiners || []) : [];
+    const njBanner = document.getElementById('new-joiners-banner');
+    if (newJoiners.length > 0) {
+      njBanner.textContent = `⏳ ${newJoiners.length} new joiner${newJoiners.length !== 1 ? 's' : ''} waiting — they'll get a slot after the current round`;
+      njBanner.classList.add('visible');
+    } else {
+      njBanner.classList.remove('visible');
+    }
+  }
+
   // paused banner
   document.getElementById('paused-banner').classList.toggle('visible', state.isPaused);
   const pauseLabel = document.getElementById('pause-label');
@@ -1417,7 +1531,15 @@ async function nextPerson() {
 async function advanceToNext() {
   const nextIndex = state.currentIndex + 1;
   if (nextIndex >= state.speakerOrder.length) {
-    await db.from('rooms').update({ status: 'complete', current_index: nextIndex }).eq('id', state.roomId);
+    // check if there are new joiners waiting
+    const { data: room } = await db.from('rooms').select('new_joiners').eq('id', state.roomId).single();
+    const newJoiners = room?.new_joiners || [];
+    if (newJoiners.length > 0) {
+      // go to decision screen
+      await db.from('rooms').update({ status: 'deciding', current_index: nextIndex }).eq('id', state.roomId);
+    } else {
+      await db.from('rooms').update({ status: 'complete', current_index: nextIndex }).eq('id', state.roomId);
+    }
     return;
   }
   await db.from('rooms').update({
@@ -1453,6 +1575,88 @@ async function togglePause() {
 }
 
 // ── COMPLETE ───────────────────────────────────────────────────────────────
+function showDecisionScreen(room) {
+  clearInterval(state.timerInterval);
+  if (state.pollInterval) clearInterval(state.pollInterval);
+
+  const newJoiners = room.new_joiners || [];
+
+  if (state.role === 'admin') {
+    document.getElementById('decision-admin-view').classList.remove('hidden');
+    document.getElementById('decision-participant-view').classList.add('hidden');
+    document.getElementById('decision-joiners-count').textContent =
+      `${newJoiners.length} new joiner${newJoiners.length !== 1 ? 's' : ''} waiting`;
+
+    // calculate extra time info
+    const perSec = state.perPersonSeconds;
+    const extraSecs = perSec * newJoiners.length;
+    const extraMins = Math.floor(extraSecs / 60);
+    const extraRemSecs = extraSecs % 60;
+    const perMin = Math.floor(perSec / 60);
+    const perRemSec = perSec % 60;
+    const perLabel = perRemSec > 0 ? `${perMin}m ${perRemSec}s` : `${perMin}m`;
+    const extraLabel = extraRemSecs > 0 ? `${extraMins}m ${extraRemSecs}s` : `${extraMins}m`;
+    const namesLabel = newJoiners.join(', ');
+    document.getElementById('decision-time-info').innerHTML =
+      `<strong>${namesLabel}</strong> will each get <strong>${perLabel}</strong>, adding approximately <strong>${extraLabel}</strong> to the standup.`;
+  } else {
+    document.getElementById('decision-admin-view').classList.add('hidden');
+    document.getElementById('decision-participant-view').classList.remove('hidden');
+  }
+
+  showScreen('screen-decision');
+
+  // 10 second countdown
+  let secs = 10;
+  const adminEl = document.getElementById('decision-countdown');
+  const partEl  = document.getElementById('decision-countdown-participant');
+
+  function updateCountdown() {
+    if (adminEl) { adminEl.textContent = secs; adminEl.classList.toggle('urgent', secs <= 3); }
+    if (partEl)  { partEl.textContent = secs;  partEl.classList.toggle('urgent', secs <= 3); }
+  }
+  updateCountdown();
+
+  state.decisionInterval = setInterval(() => {
+    secs--;
+    updateCountdown();
+    if (secs <= 0) {
+      clearInterval(state.decisionInterval);
+      if (state.role === 'admin') endStandup();
+    }
+  }, 1000);
+
+  // restart subscription/polling for decision updates
+  subscribeToRoom(room.id || state.roomId);
+}
+
+async function continueWithNewJoiners() {
+  clearInterval(state.decisionInterval);
+  const { data: room } = await db.from('rooms').select('*').eq('id', state.roomId).single();
+  const newJoiners = room?.new_joiners || [];
+  if (newJoiners.length === 0) { endStandup(); return; }
+
+  const shuffled = [...newJoiners].sort(() => Math.random() - 0.5);
+
+  await db.from('rooms').update({
+    status: 'active',
+    speaker_order: shuffled,
+    current_index: 0,
+    is_paused: false,
+    paused_at: null,
+    paused_duration: 0,
+    turn_started_at: new Date().toISOString(),
+    new_joiners: [],
+    // merge new joiners into participants so complete screen shows everyone
+    participants: [...(room.participants || []), ...newJoiners],
+  }).eq('id', state.roomId);
+}
+
+async function endStandup() {
+  clearInterval(state.decisionInterval);
+  await db.from('rooms').update({ status: 'complete' }).eq('id', state.roomId);
+}
+
 function showCompleteScreen(room) {
   clearInterval(state.timerInterval);
   const participants = room.participants || state.participants;
@@ -1478,6 +1682,7 @@ function showCompleteScreen(room) {
 
 function runAnother() {
   clearInterval(state.timerInterval);
+  clearInterval(state.decisionInterval);
   if (state.pollInterval) clearInterval(state.pollInterval);
   if (state.subscription) state.subscription.unsubscribe();
   state = { role: null, roomId: null, roomCode: null, participantName: null,
@@ -1540,7 +1745,13 @@ function handleRoomUpdate(room) {
     }
   }
 
+  if (room.status === 'deciding') {
+    clearInterval(state.timerInterval);
+    showDecisionScreen(room);
+  }
+
   if (room.status === 'complete') {
+    clearInterval(state.decisionInterval);
     if (state.pollInterval) clearInterval(state.pollInterval);
     showCompleteScreen(room);
   }
