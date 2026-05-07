@@ -642,7 +642,7 @@
   <div class="logo">B</div>
   <span class="brand-name">Bareel</span>
   <span class="brand-sub">Stand Up</span>
-  <span class="badge hidden" id="topbar-badge">Admin</span>
+  <span class="badge hidden" id="topbar-badge">Host</span>
   <span id="topbar-code" class="hidden" style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--brand);background:var(--brand-light);border:1px solid #cccaf5;border-radius:6px;padding:3px 10px;letter-spacing:2px;"></span>
   <div class="progress-wrap hidden" id="topbar-progress">
     <div class="progress-bar" id="progress-bar" style="width:0%"></div>
@@ -770,6 +770,22 @@
       </div>
 
       <div class="field">
+        <label>Host participation</label>
+        <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer" onclick="document.getElementById('host-participating').click()">
+          <input type="checkbox" id="host-participating" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer;flex-shrink:0" />
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">I am participating in this standup</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">You'll be added to the speaker queue along with everyone else</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Host name</label>
+        <input type="text" id="host-name" placeholder="Your name" class="hidden" />
+      </div>
+
+      <div class="field">
         <label>Questions for each participant</label>
         <div id="questions-container">
           <div class="question-row">
@@ -869,7 +885,7 @@
       </div>
     </div>
 
-    <!-- waiting for admin to begin -->
+    <!-- waiting for host to begin -->
     <div id="join-waiting-wrap" class="hidden">
       <div class="join-card">
         <div class="waiting-start">
@@ -880,7 +896,7 @@
             </svg>
           </div>
           <h1 style="margin-bottom:8px">You're in!</h1>
-          <p class="subtitle" id="join-waiting-name-label">Waiting for the admin to begin the standup...</p>
+          <p class="subtitle" id="join-waiting-name-label">Waiting for the host to begin the standup...</p>
           <div class="card-purple" style="border-radius:var(--radius);padding:16px;margin-top:20px">
             <div class="section-label">You joined as</div>
             <div style="font-size:18px;font-weight:600;color:var(--brand-dark);margin-top:4px" id="join-confirmed-name"></div>
@@ -946,7 +962,7 @@
           <div class="btn-everyone-lbl" id="btn-next-lbl"></div>
 
           <div class="admin-section" id="admin-controls">
-            <div class="admin-divider">Admin only</div>
+            <div class="admin-divider">Host only</div>
             <button class="btn-pause" id="btn-pause" onclick="togglePause()">
               <div class="pause-icon"><div class="pause-bar"></div><div class="pause-bar"></div></div>
               <span id="pause-label">Pause timer</span>
@@ -964,7 +980,7 @@
      SCREEN: DECISION (continue or end)
 ════════════════════════════════════════════ -->
 <div class="screen" id="screen-decision">
-  <!-- Admin view -->
+  <!-- Host view -->
   <div class="decision-body" id="decision-admin-view">
     <div class="decision-card">
       <div class="decision-countdown" id="decision-countdown">10</div>
@@ -1011,11 +1027,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-val" id="complete-total">—</div>
-          <div class="stat-lbl">Total time</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="complete-per">—</div>
-          <div class="stat-lbl">Per person</div>
+          <div class="stat-lbl">Total time elapsed</div>
         </div>
       </div>
 
@@ -1090,7 +1102,7 @@ function showScreen(id) {
   progLbl.classList.add('hidden');
 
   if (id === 'screen-waiting') {
-    badge.textContent = 'Admin';
+    badge.textContent = 'Host';
     badge.classList.remove('hidden');
   }
   const topbarCode = document.getElementById('topbar-code');
@@ -1098,7 +1110,7 @@ function showScreen(id) {
 
   if (id === 'screen-active') {
     if (state.role === 'admin') {
-      badge.textContent = 'Admin';
+      badge.textContent = 'Host';
       badge.classList.remove('hidden');
       if (state.roomCode) {
         topbarCode.textContent = state.roomCode;
@@ -1111,6 +1123,18 @@ function showScreen(id) {
 }
 
 // ── SETUP HELPERS ──────────────────────────────────────────────────────────
+
+// toggle host name field visibility
+document.addEventListener('DOMContentLoaded', () => {
+  const checkbox = document.getElementById('host-participating');
+  if (checkbox) {
+    checkbox.addEventListener('change', () => {
+      const nameField = document.getElementById('host-name');
+      nameField.classList.toggle('hidden', !checkbox.checked);
+      if (checkbox.checked) nameField.focus();
+    });
+  }
+});
 
 function addQuestion() {
   const container = document.getElementById('questions-container');
@@ -1172,6 +1196,11 @@ async function createRoom() {
   });
   if (questions.length === 0) { showError('setup-error', 'Please add at least one question.'); return; }
 
+  // host participating
+  const hostParticipating = document.getElementById('host-participating').checked;
+  const hostName = document.getElementById('host-name').value.trim();
+  if (hostParticipating && !hostName) { showError('setup-error', 'Please enter your name to join as a participant.'); return; }
+
   // duration based on mode
   const timingModeValue = timingMode;
   let totalSeconds = null;
@@ -1189,13 +1218,17 @@ async function createRoom() {
     timingMode: timingModeValue,
     duration: document.getElementById('duration-select').value,
     perPerson: document.getElementById('per-person-select').value,
-    questions
+    questions,
+    hostParticipating,
+    hostName: hostName || ''
   }));
 
   btn.innerHTML = '<div class="spinner"></div> Creating...';
   btn.disabled = true;
 
   const code = generateCode();
+
+  const initialParticipants = hostParticipating && hostName ? [hostName] : [];
 
   const { data, error } = await db.from('rooms').insert({
     code,
@@ -1205,7 +1238,7 @@ async function createRoom() {
     per_person_seconds: perPersonSeconds,
     timing_mode: timingModeValue,
     status: 'waiting',
-    participants: [],
+    participants: initialParticipants,
     speaker_order: [],
     current_index: 0,
     is_paused: false,
@@ -1223,6 +1256,7 @@ async function createRoom() {
   state.totalSeconds = totalSeconds;
   state.timingMode = timingModeValue;
   state.fixedPerPersonSeconds = perPersonSeconds;
+  if (hostParticipating && hostName) state.participantName = hostName;
 
   showWaitingRoom(data);
   subscribeToRoom(data.id);
@@ -1231,7 +1265,7 @@ async function createRoom() {
 // ── WAITING ROOM ───────────────────────────────────────────────────────────
 function showWaitingRoom(roomData) {
   document.getElementById('waiting-standup-name').textContent = roomData.name;
-  document.getElementById('topbar-badge').textContent = 'Admin';
+  document.getElementById('topbar-badge').textContent = 'Host';
   const topbarCode = document.getElementById('topbar-code');
   topbarCode.textContent = state.roomCode;
   topbarCode.classList.remove('hidden');
@@ -1369,7 +1403,7 @@ async function joinRoom() {
     await db.from('rooms').update({ participants: updatedParticipants }).eq('id', room.id);
 
     document.getElementById('join-confirmed-name').textContent = name;
-    document.getElementById('join-waiting-name-label').textContent = `Waiting for the admin to begin — ${room.name}`;
+    document.getElementById('join-waiting-name-label').textContent = `Waiting for the host to begin — ${room.name}`;
     document.getElementById('join-form-wrap').classList.add('hidden');
     document.getElementById('join-waiting-wrap').classList.remove('hidden');
   }
@@ -1403,6 +1437,7 @@ async function beginStandup() {
     current_index: 0,
     is_paused: false,
     turn_started_at: new Date().toISOString(),
+    standup_started_at: new Date().toISOString(),
     per_person_seconds: perPersonSecs,
   }).eq('id', state.roomId);
 }
@@ -1422,7 +1457,7 @@ function renderActiveScreen(room) {
 
   showScreen('screen-active');
 
-  // admin controls visibility
+  // host controls visibility
   document.getElementById('admin-controls').style.display = state.role === 'admin' ? 'block' : 'none';
 
   updateActiveSpeaker(room);
@@ -1550,7 +1585,11 @@ async function advanceToNext() {
       // go to decision screen
       await db.from('rooms').update({ status: 'deciding', current_index: nextIndex }).eq('id', state.roomId);
     } else {
-      await db.from('rooms').update({ status: 'complete', current_index: nextIndex }).eq('id', state.roomId);
+      await db.from('rooms').update({
+        status: 'complete',
+        current_index: nextIndex,
+        standup_ended_at: new Date().toISOString(),
+      }).eq('id', state.roomId);
     }
     return;
   }
@@ -1672,19 +1711,28 @@ async function continueWithNewJoiners() {
 async function endStandup() {
   clearInterval(state.decisionInterval);
   state.decisionActive = false;
-  await db.from('rooms').update({ status: 'complete' }).eq('id', state.roomId);
+  await db.from('rooms').update({
+    status: 'complete',
+    standup_ended_at: new Date().toISOString(),
+  }).eq('id', state.roomId);
 }
 
 function showCompleteScreen(room) {
   clearInterval(state.timerInterval);
   const participants = room.participants || state.participants;
-  const totalMins = Math.round(state.totalSeconds / 60);
-  const perSec = state.perPersonSeconds || Math.floor(state.totalSeconds / participants.length);
-  const perM = Math.floor(perSec/60), perS = perSec%60;
+
+  // actual wall-clock elapsed time
+  let elapsedLabel = '—';
+  if (room.standup_started_at) {
+    const startedAt = new Date(room.standup_started_at).getTime();
+    const totalElapsedSecs = Math.round((Date.now() - startedAt) / 1000);
+    const elapsedMins = Math.floor(totalElapsedSecs / 60);
+    const elapsedRemSecs = totalElapsedSecs % 60;
+    elapsedLabel = elapsedRemSecs > 0 ? `${elapsedMins}m ${elapsedRemSecs}s` : `${elapsedMins}m`;
+  }
 
   document.getElementById('complete-count').textContent = participants.length;
-  document.getElementById('complete-total').textContent = `${totalMins}m`;
-  document.getElementById('complete-per').textContent = perS > 0 ? `${perM}m ${perS}s` : `${perM}m`;
+  document.getElementById('complete-total').textContent = elapsedLabel;
 
   document.getElementById('complete-participants').innerHTML = participants.map(p => `
     <div class="remaining-pill">
@@ -1829,6 +1877,15 @@ function loadSavedSettings() {
     // restore per person duration
     if (saved.perPerson) {
       document.getElementById('per-person-select').value = saved.perPerson;
+    }
+
+    // restore host participation
+    if (saved.hostParticipating) {
+      const cb = document.getElementById('host-participating');
+      cb.checked = true;
+      const nameField = document.getElementById('host-name');
+      nameField.classList.remove('hidden');
+      if (saved.hostName) nameField.value = saved.hostName;
     }
 
     // restore questions
