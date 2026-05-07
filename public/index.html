@@ -978,6 +978,8 @@ let state = {
   lastSpeakerIndex: -1,
   timingMode: 'total',
   fixedPerPersonSeconds: null,
+  pausedAt: null,
+  pausedDuration: 0,
 };
 
 // ── SCREEN ROUTER ──────────────────────────────────────────────────────────
@@ -1376,7 +1378,8 @@ function startLocalTimer(room) {
 
   function tick() {
     if (state.isPaused) return;
-    const elapsed = Date.now() - turnStarted;
+    const pausedMs = (state.pausedDuration || 0) * 1000;
+    const elapsed = Date.now() - turnStarted - pausedMs;
     const remaining = Math.max(0, totalMs - elapsed);
     state.timeLeft = Math.ceil(remaining / 1000);
 
@@ -1421,13 +1424,32 @@ async function advanceToNext() {
     current_index: nextIndex,
     turn_started_at: new Date().toISOString(),
     is_paused: false,
+    paused_at: null,
+    paused_duration: 0,
   }).eq('id', state.roomId);
 }
 
 // ── PAUSE ──────────────────────────────────────────────────────────────────
 async function togglePause() {
   const newPaused = !state.isPaused;
-  await db.from('rooms').update({ is_paused: newPaused }).eq('id', state.roomId);
+
+  if (newPaused) {
+    // pausing — record when we paused
+    await db.from('rooms').update({
+      is_paused: true,
+      paused_at: new Date().toISOString(),
+    }).eq('id', state.roomId);
+  } else {
+    // resuming — add elapsed pause time to paused_duration
+    const pausedAt = new Date(state.pausedAt).getTime();
+    const additionalPause = Math.floor((Date.now() - pausedAt) / 1000);
+    const newPausedDuration = (state.pausedDuration || 0) + additionalPause;
+    await db.from('rooms').update({
+      is_paused: false,
+      paused_at: null,
+      paused_duration: newPausedDuration,
+    }).eq('id', state.roomId);
+  }
 }
 
 // ── COMPLETE ───────────────────────────────────────────────────────────────
@@ -1500,6 +1522,8 @@ function handleRoomUpdate(room) {
   if (room.status === 'active') {
     state.currentIndex     = room.current_index;
     state.isPaused         = room.is_paused;
+    state.pausedAt         = room.paused_at;
+    state.pausedDuration   = room.paused_duration || 0;
     state.perPersonSeconds = room.per_person_seconds;
     state.speakerOrder     = room.speaker_order;
     state.participants     = room.participants;
