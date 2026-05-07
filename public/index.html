@@ -561,7 +561,7 @@
     <div class="card">
       <div class="field">
         <label>Standup name</label>
-        <input type="text" id="standup-name" placeholder="e.g. Engineering daily standup" value="Engineering daily standup" />
+        <input type="text" id="standup-name" placeholder="e.g. Engineering daily standup" />
       </div>
 
       <div class="field">
@@ -979,6 +979,13 @@ async function createRoom() {
     if (inp.value.trim()) questions.push(inp.value.trim());
   });
   if (questions.length === 0) { showError('setup-error', 'Please add at least one question.'); return; }
+
+  // save settings to localStorage
+  localStorage.setItem('bareel_settings', JSON.stringify({
+    name,
+    duration: document.getElementById('duration-select').value,
+    questions
+  }));
 
   // duration
   const totalSeconds = parseInt(document.getElementById('duration-select').value) * 60;
@@ -1416,9 +1423,42 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     state.role = 'admin';
     document.getElementById('topbar-badge').classList.remove('hidden');
+    loadSavedSettings();
     showScreen('screen-setup');
   }
 });
+
+function loadSavedSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('bareel_settings'));
+    if (!saved) return;
+
+    // restore name
+    if (saved.name) {
+      document.getElementById('standup-name').value = saved.name;
+    }
+
+    // restore duration
+    if (saved.duration) {
+      document.getElementById('duration-select').value = saved.duration;
+    }
+
+    // restore questions
+    if (saved.questions && saved.questions.length > 0) {
+      const container = document.getElementById('questions-container');
+      container.innerHTML = '';
+      saved.questions.forEach(q => {
+        const row = document.createElement('div');
+        row.className = 'question-row';
+        row.innerHTML = '<input type="text" placeholder="Enter a question" /><button class="btn-remove" onclick="removeQuestion(this)">×</button>';
+        row.querySelector('input').value = q;
+        container.appendChild(row);
+      });
+    }
+  } catch(e) {
+    // if localStorage fails silently, just leave defaults
+  }
+}
 </script>
 </body>
 </html>
