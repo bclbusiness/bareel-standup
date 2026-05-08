@@ -655,13 +655,13 @@
 ════════════════════════════════════════════ -->
 <div class="screen active" id="screen-setup">
   <div class="container">
-    <h1>Set up your standup</h1>
+    <h1>Create your stand up</h1>
     <p class="subtitle">Configure the session before sharing the join code.</p>
 
     <div class="card">
       <div class="field">
-        <label>Standup name</label>
-        <input type="text" id="standup-name" placeholder="e.g. Engineering daily standup" />
+        <label>Stand up name</label>
+        <input type="text" id="standup-name" placeholder="e.g. Engineering daily stand up" />
       </div>
 
       <div class="field">
@@ -670,7 +670,7 @@
           <div class="radio-option selected" id="radio-total" onclick="setTimingMode('total')">
             <div class="radio-dot"></div>
             <div>
-              <span class="radio-label">Set total standup time</span>
+              <span class="radio-label">Set total stand up time</span>
               <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Total time is divided amongst number of participants.</div>
             </div>
           </div>
@@ -685,7 +685,7 @@
       </div>
 
       <div class="field" id="field-total-duration">
-        <label>Total standup duration</label>
+        <label>Total stand up duration</label>
         <div class="select-wrap">
           <select id="duration-select">
             <option value="1">1 minute</option>
@@ -780,7 +780,7 @@
         <label for="host-participating" style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer">
           <input type="checkbox" id="host-participating" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer;flex-shrink:0" />
           <div>
-            <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">I am participating in this standup</div>
+            <div style="font-size:13px;font-weight:500;color:var(--color-text-primary)">I am participating in this stand up</div>
             <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">You'll be added to the speaker queue along with everyone else</div>
           </div>
         </label>
@@ -813,7 +813,7 @@
       <div class="error-msg" id="setup-error"></div>
       <hr class="divider" />
       <button class="btn btn-primary btn-full" id="btn-create" onclick="createRoom()">
-        Create standup room
+        Create stand up room
       </button>
     </div>
 
@@ -828,7 +828,7 @@
 ════════════════════════════════════════════ -->
 <div class="screen" id="screen-waiting">
   <div class="container-wide">
-    <h1 id="waiting-standup-name">Engineering daily standup</h1>
+    <h1 id="waiting-standup-name">Engineering daily Stand Up</h1>
     <p class="subtitle">Share the code and wait for everyone to join, then hit Begin.</p>
 
     <div class="waiting-grid">
@@ -856,7 +856,7 @@
     </div>
 
     <div class="waiting-actions">
-      <button class="btn btn-primary" id="btn-begin" onclick="beginStandup()" disabled>Begin standup</button>
+      <button class="btn btn-primary" id="btn-begin" onclick="beginStandup()" disabled>Begin stand up</button>
       <button class="btn btn-outline" id="btn-waiting-status">Waiting for participants...</button>
     </div>
   </div>
@@ -869,7 +869,7 @@
   <div class="join-body">
     <div id="join-form-wrap">
       <div class="join-card">
-        <h1>Join a standup</h1>
+        <h1>Join a stand up</h1>
         <p class="subtitle">Enter the 6-digit code and your name to join.</p>
 
         <div class="field">
@@ -884,7 +884,7 @@
 
         <div class="error-msg" id="join-error"></div>
         <button class="btn btn-primary btn-full" id="btn-join" onclick="joinRoom()">
-          Join standup
+          Join stand up
         </button>
 
         <p class="join-url">Visit <span>bareel.app</span> to get here</p>
@@ -902,7 +902,7 @@
             </svg>
           </div>
           <h1 style="margin-bottom:8px">You're in!</h1>
-          <p class="subtitle" id="join-waiting-name-label">Waiting for the host to begin the standup...</p>
+          <p class="subtitle" id="join-waiting-name-label">Waiting for the host to begin the stand up...</p>
           <div class="card-purple" style="border-radius:var(--radius);padding:16px;margin-top:20px">
             <div class="section-label">You joined as</div>
             <div style="font-size:18px;font-weight:600;color:var(--brand-dark);margin-top:4px" id="join-confirmed-name"></div>
@@ -991,12 +991,12 @@
     <div class="decision-card">
       <div class="decision-countdown" id="decision-countdown">10</div>
       <div class="new-joiners-badge" id="decision-joiners-count">0 new joiners waiting</div>
-      <h1 style="margin-bottom:8px">Original standup complete</h1>
-      <p class="subtitle">New participants joined after the standup began. Would you like to continue?</p>
+      <h1 style="margin-bottom:8px">Original stand up complete</h1>
+      <p class="subtitle">New participants joined after the stand up began. Would you like to continue?</p>
       <div id="decision-time-info" style="font-size:13px;color:var(--text-secondary);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-top:12px;margin-bottom:4px;"></div>
       <div class="decision-buttons">
         <button class="btn btn-primary btn-full" onclick="continueWithNewJoiners()">Continue with new joiners</button>
-        <button class="btn btn-outline btn-full" onclick="endStandup()">End standup</button>
+        <button class="btn btn-outline btn-full" onclick="endStandup()">End stand up</button>
       </div>
     </div>
   </div>
@@ -1023,7 +1023,7 @@
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
-      <h1>Standup complete</h1>
+      <h1>Stand Up complete</h1>
       <p class="subtitle">Everyone had their turn. Great work, team.</p>
 
       <div class="stats-row">
@@ -1039,7 +1039,7 @@
 
       <div class="complete-participants" id="complete-participants"></div>
 
-      <button class="btn btn-outline" id="btn-run-another" onclick="runAnother()">Run another standup</button>
+      <button class="btn btn-outline" id="btn-run-another" onclick="runAnother()">Run another stand up</button>
     </div>
   </div>
 </div>
@@ -1194,7 +1194,7 @@ async function createRoom() {
   if (!db) { showError('setup-error', 'Supabase is not configured yet. Please add your credentials to index.html first.'); return; }
 
   const name = document.getElementById('standup-name').value.trim();
-  if (!name) { showError('setup-error', 'Please enter a standup name.'); return; }
+  if (!name) { showError('setup-error', 'Please enter a stand up name.'); return; }
 
   // gather questions
   const questions = [];
@@ -1251,7 +1251,7 @@ async function createRoom() {
     is_paused: false,
   }).select().single();
 
-  btn.innerHTML = 'Create standup room';
+  btn.innerHTML = 'Create stand up room';
   btn.disabled = false;
 
   if (error) { showError('setup-error', 'Could not create room. Check your Supabase config.'); console.error(error); return; }
@@ -1369,7 +1369,7 @@ async function joinRoom() {
   const errEl = document.getElementById('join-error');
   errEl.classList.remove('visible');
 
-  if (!db) { showError('join-error', 'Supabase is not configured yet. Please contact the standup organiser.'); return; }
+  if (!db) { showError('join-error', 'Supabase is not configured yet. Please contact the stand up organiser.'); return; }
 
   const boxes = document.querySelectorAll('.code-input-box');
   const code  = Array.from(boxes).map(b => b.value).join('');
@@ -1384,12 +1384,12 @@ async function joinRoom() {
   const { data: room, error } = await db.from('rooms').select('*').eq('code', code).single();
 
   if (error || !room) {
-    btn.innerHTML = 'Join standup'; btn.disabled = false;
+    btn.innerHTML = 'Join stand up'; btn.disabled = false;
     showError('join-error', 'Room not found. Check the code and try again.'); return;
   }
   if (room.status === 'complete') {
-    btn.innerHTML = 'Join standup'; btn.disabled = false;
-    showError('join-error', 'This standup has already finished.'); return;
+    btn.innerHTML = 'Join stand up'; btn.disabled = false;
+    showError('join-error', 'This stand up has already finished.'); return;
   }
 
   state.role = 'participant';
@@ -1408,7 +1408,7 @@ async function joinRoom() {
     await db.from('rooms').update({ new_joiners: updatedNewJoiners }).eq('id', room.id);
 
     document.getElementById('join-confirmed-name').textContent = name;
-    document.getElementById('join-waiting-name-label').textContent = `The standup is underway — you've been added to the waiting list`;
+    document.getElementById('join-waiting-name-label').textContent = `The stand up is underway — you've been added to the waiting list`;
     document.getElementById('join-form-wrap').classList.add('hidden');
     document.getElementById('join-waiting-wrap').classList.remove('hidden');
   } else {
@@ -1423,7 +1423,7 @@ async function joinRoom() {
     document.getElementById('join-waiting-wrap').classList.remove('hidden');
   }
 
-  btn.innerHTML = 'Join standup'; btn.disabled = false;
+  btn.innerHTML = 'Join stand up'; btn.disabled = false;
 
   subscribeToRoom(room.id);
 
@@ -1670,7 +1670,7 @@ function showDecisionScreen(room) {
     const extraLabel = extraRemSecs > 0 ? `${extraMins}m ${extraRemSecs}s` : `${extraMins}m`;
     const namesLabel = newJoiners.join(', ');
     document.getElementById('decision-time-info').innerHTML =
-      `<strong>${namesLabel}</strong> will each get <strong>${perLabel}</strong>, adding approximately <strong>${extraLabel}</strong> to the standup.`;
+      `<strong>${namesLabel}</strong> will each get <strong>${perLabel}</strong>, adding approximately <strong>${extraLabel}</strong> to the stand up.`;
   } else {
     document.getElementById('decision-admin-view').classList.add('hidden');
     document.getElementById('decision-participant-view').classList.remove('hidden');
@@ -1738,11 +1738,12 @@ function showCompleteScreen(room) {
   clearInterval(state.timerInterval);
   const participants = room.participants || state.participants;
 
-  // actual wall-clock elapsed time
+  // use server timestamps so all devices show identical elapsed time
   let elapsedLabel = '—';
-  if (room.standup_started_at) {
+  if (room.standup_started_at && room.standup_ended_at) {
     const startedAt = new Date(room.standup_started_at).getTime();
-    const totalElapsedSecs = Math.round((Date.now() - startedAt) / 1000);
+    const endedAt   = new Date(room.standup_ended_at).getTime();
+    const totalElapsedSecs = Math.round((endedAt - startedAt) / 1000);
     const elapsedMins = Math.floor(totalElapsedSecs / 60);
     const elapsedRemSecs = totalElapsedSecs % 60;
     elapsedLabel = elapsedRemSecs > 0 ? `${elapsedMins}m ${elapsedRemSecs}s` : `${elapsedMins}m`;
