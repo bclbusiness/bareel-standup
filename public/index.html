@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bareel Stand Up</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -260,6 +261,76 @@
     }
     .radio-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
     .radio-option.selected .radio-label { color: var(--brand-dark); }
+
+
+    /* ── ONBOARDING OVERLAY ── */
+    .onboarding-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .onboarding-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    }
+    .onboarding-logo-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .onboarding-title {
+      font-size: 16px; font-weight: 600;
+      color: var(--text-primary); margin-bottom: 4px;
+    }
+    .onboarding-desc {
+      font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 20px; line-height: 1.5;
+    }
+    .onboarding-steps {
+      display: flex; flex-direction: column;
+      gap: 0; margin-bottom: 22px;
+    }
+    .onboarding-step {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .onboarding-step-icon {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      background: var(--brand-light);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .onboarding-step-icon i { font-size: 17px; color: var(--brand); }
+    .onboarding-step-label {
+      font-size: 13px; font-weight: 500;
+      color: var(--text-primary); line-height: 1.4;
+    }
+    .onboarding-connector {
+      padding-left: 17px;
+      color: var(--text-tertiary); font-size: 13px;
+      line-height: 1; margin: 3px 0;
+    }
+    .onboarding-footer {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .onboarding-dont-show {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .onboarding-dont-show input {
+      width: 14px; height: 14px;
+      accent-color: var(--brand); cursor: pointer;
+      flex-shrink: 0;
+    }
 
     /* ── SCREEN 1: SETUP ── */
     #screen-setup .container { max-width: 600px; }
@@ -1868,9 +1939,34 @@ function showError(id, msg) {
   el.classList.add('visible');
 }
 
+
+// ── ONBOARDING OVERLAY ────────────────────────────────────────────────────
+function initOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  if (!overlay) return;
+  // only show on admin/host setup screen
+  if (window.location.search.includes('join') || window.location.pathname.includes('join')) {
+    overlay.style.display = 'none';
+    return;
+  }
+  // check localStorage
+  const dontShow = localStorage.getItem('bareel_hide_onboarding') === 'true';
+  overlay.style.display = dontShow ? 'none' : 'flex';
+}
+
+function closeOnboarding() {
+  const overlay = document.getElementById('onboarding-overlay');
+  const dontShow = document.getElementById('onboarding-dont-show').checked;
+  if (dontShow) {
+    localStorage.setItem('bareel_hide_onboarding', 'true');
+  }
+  overlay.style.display = 'none';
+}
+
 // ── INIT ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   buildCodeInputs();
+  initOnboarding();
 
   // If URL contains ?join, show join screen for participants
   if (window.location.search.includes('join') || window.location.pathname.includes('join')) {
@@ -1934,5 +2030,52 @@ function loadSavedSettings() {
   }
 }
 </script>
+
+<!-- ═══════════════════════════════════════════
+     ONBOARDING OVERLAY
+════════════════════════════════════════════ -->
+<div class="onboarding-backdrop" id="onboarding-overlay">
+  <div class="onboarding-card">
+    <div class="onboarding-logo-row">
+      <div class="logo">B</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">Bareel Stand Up</div>
+      </div>
+    </div>
+    <div class="onboarding-title">How it works</div>
+    <div class="onboarding-desc">Four simple steps — here's what to expect.</div>
+
+    <div class="onboarding-steps">
+      <div class="onboarding-step">
+        <div class="onboarding-step-icon"><i class="ti ti-settings" aria-hidden="true"></i></div>
+        <div class="onboarding-step-label">Create your stand up</div>
+      </div>
+      <div class="onboarding-connector"><i class="ti ti-arrow-down" aria-hidden="true"></i></div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-icon"><i class="ti ti-share" aria-hidden="true"></i></div>
+        <div class="onboarding-step-label">Share your code</div>
+      </div>
+      <div class="onboarding-connector"><i class="ti ti-arrow-down" aria-hidden="true"></i></div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-icon"><i class="ti ti-player-play" aria-hidden="true"></i></div>
+        <div class="onboarding-step-label">Begin stand up</div>
+      </div>
+      <div class="onboarding-connector"><i class="ti ti-arrow-down" aria-hidden="true"></i></div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-icon"><i class="ti ti-arrows-shuffle" aria-hidden="true"></i></div>
+        <div class="onboarding-step-label">Stand up proceeds in random order</div>
+      </div>
+    </div>
+
+    <div class="onboarding-footer">
+      <label class="onboarding-dont-show" id="onboarding-dont-show-label">
+        <input type="checkbox" id="onboarding-dont-show" />
+        Don't show this again
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="closeOnboarding()">Got it</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
